@@ -126,6 +126,14 @@ void print_memblock(struct memblock_view* memblock) {
 	
 }
 
+void print_vm_area_structs(void* dest_arr, int num) {
+		char* pos = (char*)dest_arr;
+		for (int i=0; i<num; i++) {
+			print_vm_area((struct vm_area_struct_view*) pos);
+			pos = pos + sizeof(struct vm_area_struct_view);
+		}
+}
+
 int main(int argc, char *argv[])
 {
 	
@@ -191,7 +199,10 @@ int main(int argc, char *argv[])
 			void* dest_arr = malloc(buff_sz);
 			void* buff_arr = malloc(buff_sz);
 			int all_structs = 0;
-			int ans = syscall(437, pid, dest_arr, buff_sz, buff_arr, buff_sz, &all_structs);
+			int pid_and_first_struct_num[2];
+			pid_and_first_struct_num[0] = pid;
+			pid_and_first_struct_num[1] = 0;
+			int ans = syscall(437, pid_and_first_struct_num, dest_arr, buff_sz, buff_arr, buff_sz, &all_structs);
 			if (ans == -1) {
 				printf("No such pid\n");
 			}
@@ -199,21 +210,20 @@ int main(int argc, char *argv[])
 			if (ans == 0) {
 				printf("No memory mappings\n");
 			}
-			
+			int struct_num = ans;
 			if (ans > 0) {
-				printf("areas count %d\n", ans);
 				
-				char* pos = (char*)dest_arr;
-				for (int i=0; i<ans; i++) {
-						print_vm_area((struct vm_area_struct_view*) pos);
-						pos = pos + sizeof(struct vm_area_struct_view);
-				}
-				if (all_structs != 1) {
-						printf("not all vma structs; given arrs sz is not enough\n");
+				print_vm_area_structs(dest_arr, ans);
+				while (all_structs != 1) {
+					pid_and_first_struct_num[1] = struct_num;
+					ans = syscall(437, pid_and_first_struct_num, dest_arr, buff_sz, buff_arr, buff_sz, &all_structs);
+					print_vm_area_structs(dest_arr, ans-struct_num);
+					struct_num = ans;
+				
 				}
 			}
 			
-			
+			printf("total areas count %d\n", struct_num);
 			free(dest_arr);
 			free(buff_arr);
 			
