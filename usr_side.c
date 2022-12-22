@@ -88,6 +88,21 @@ void print_vm_area(struct vm_area_struct_view* vm_area) {
 	
 }
 
+void print_vm_area1(struct vm_area_struct_view* vm_area) {
+	char* rd = ((vm_area->vm_flags & 1) == 1)?"r":"-";
+	char* wr = ((vm_area->vm_flags & 2) == 2)?"w":"-";
+	char* ex = ((vm_area->vm_flags & 4) == 4)?"e":"-";
+	char* sh = ((vm_area->vm_flags & 8) == 8)?"s":"-";
+	char* fn = (vm_area->filename != NULL)? vm_area->filename : "-";
+	unsigned long offs = (vm_area->filename != NULL)?vm_area->vm_pgoff:0;
+	
+	printf("0x%010lx  0x%010lx  0x%08lx  %s%s%s%s  0x%04lx  %s\n", 
+	vm_area->vm_start, vm_area->vm_end, vm_area->vm_flags,
+	rd,wr,ex,sh, offs, fn);
+
+	
+}
+
 void print_memblock_region_arr(struct memblock_region_view* arr, uint64_t count) {
 	
 	if (arr == NULL) {
@@ -126,10 +141,14 @@ void print_memblock(struct memblock_view* memblock) {
 	
 }
 
-void print_vm_area_structs(void* dest_arr, int num) {
+void print_vm_area_structs(void* dest_arr, int num, int initial) {
 		char* pos = (char*)dest_arr;
+		if (initial == 1) {
+			printf("%14s  %14s  %10s  %4s  %6s  %s\n", 
+			"start", "end", "flags", "rwes", "offs", "file");
+		}
 		for (int i=0; i<num; i++) {
-			print_vm_area((struct vm_area_struct_view*) pos);
+			print_vm_area1((struct vm_area_struct_view*) pos);
 			pos = pos + sizeof(struct vm_area_struct_view);
 		}
 }
@@ -213,11 +232,11 @@ int main(int argc, char *argv[])
 			int struct_num = ans;
 			if (ans > 0) {
 				
-				print_vm_area_structs(dest_arr, ans);
+				print_vm_area_structs(dest_arr, ans, 1);
 				while (all_structs != 1) {
 					pid_and_first_struct_num[1] = struct_num;
 					ans = syscall(437, pid_and_first_struct_num, dest_arr, buff_sz, buff_arr, buff_sz, &all_structs);
-					print_vm_area_structs(dest_arr, ans-struct_num);
+					print_vm_area_structs(dest_arr, ans-struct_num, 0);
 					struct_num = ans;
 				
 				}
