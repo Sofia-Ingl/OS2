@@ -177,12 +177,6 @@ int main(int argc, char *argv[])
 				vm_area = 1;
 				pid = atoi(optarg);
 			}
-			if (res == 'b') {
-				int usr_buff_sz = atoi(optarg);
-				if ((usr_buff_sz > 0 ) && (usr_buff_sz < buff_sz)) {
-					buff_sz = usr_buff_sz;
-				}
-			}
 			if (res == '?') {
 				printf("Invalid param usage\n");
 			}
@@ -215,15 +209,17 @@ int main(int argc, char *argv[])
 		
 		if (vm_area == 1) {
 			
-			void* dest_arr = malloc(buff_sz);
-			void* buff_arr = malloc(buff_sz);
-			int all_structs = 0;
-			int pid_and_first_struct_num[2];
-			pid_and_first_struct_num[0] = pid;
-			pid_and_first_struct_num[1] = 0;
-			int ans = syscall(437, pid_and_first_struct_num, dest_arr, buff_sz, buff_arr, buff_sz, &all_structs);
+			int main_arr_sz = buff_sz;
+			int buff_arr_sz = buff_sz;
+			int res = syscall(438, pid, &main_arr_sz, &buff_arr_sz);
+			printf("%d - arr sz, %d - buff sz\n", main_arr_sz, buff_arr_sz);
+			
+			void* dest_arr = malloc(main_arr_sz + 100);
+			void* buff_arr = malloc(buff_arr_sz + 100);
+			
+			int ans = syscall(437, pid, dest_arr, main_arr_sz, buff_arr, buff_arr_sz);
 			if (ans == -1) {
-				printf("No such pid\n");
+				printf("No such pid or other error occured\n");
 			}
 			
 			if (ans == 0) {
@@ -233,13 +229,6 @@ int main(int argc, char *argv[])
 			if (ans > 0) {
 				
 				print_vm_area_structs(dest_arr, ans, 1);
-				while (all_structs != 1) {
-					pid_and_first_struct_num[1] = struct_num;
-					ans = syscall(437, pid_and_first_struct_num, dest_arr, buff_sz, buff_arr, buff_sz, &all_structs);
-					print_vm_area_structs(dest_arr, ans-struct_num, 0);
-					struct_num = ans;
-				
-				}
 			}
 			
 			printf("total areas count %d\n", struct_num);
